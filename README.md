@@ -2,6 +2,56 @@
 
 Terraform module to provision an AWS Elastic File System (EFS) with mount targets, access points, replication, and backup policy.
 
+## Architecture Diagram
+
+```mermaid
+flowchart TB
+    subgraph FS["EFS File System"]
+        EFS["Elastic File System\n(Performance / Throughput Mode)"]
+        LIFECYCLE["Lifecycle Policy\n(Transition to IA)"]
+    end
+
+    subgraph Mounts["Mount Targets"]
+        MT1["Mount Target\nSubnet AZ-a"]
+        MT2["Mount Target\nSubnet AZ-b"]
+        MT3["Mount Target\nSubnet AZ-c"]
+    end
+
+    subgraph Access["Access Points"]
+        AP1["Access Point\n(POSIX User / Root Dir)"]
+        AP2["Access Point\n(POSIX User / Root Dir)"]
+    end
+
+    subgraph Security["Encryption & Security"]
+        KMS["KMS Encryption\n(At Rest)"]
+        SG["Security Group\n(NFS Port 2049)"]
+    end
+
+    subgraph Protection["Data Protection"]
+        BACKUP["AWS Backup\n(Automatic)"]
+        REPL["Cross-Region\nReplication"]
+    end
+
+    EFS --> LIFECYCLE
+    EFS --> MT1
+    EFS --> MT2
+    EFS --> MT3
+    EFS --> AP1
+    EFS --> AP2
+    EFS --> KMS
+    MT1 --> SG
+    MT2 --> SG
+    MT3 --> SG
+    EFS --> BACKUP
+    EFS --> REPL
+
+    style FS fill:#FF9900,color:#fff
+    style Mounts fill:#0078D4,color:#fff
+    style Access fill:#3F8624,color:#fff
+    style Security fill:#DD344C,color:#fff
+    style Protection fill:#8C4FFF,color:#fff
+```
+
 ## Features
 
 - EFS file system with configurable performance and throughput modes
