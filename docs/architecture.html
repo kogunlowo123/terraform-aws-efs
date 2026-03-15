@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>terraform-aws-efs | Architecture Document</title>
+<style>
+  :root {
+    --ink: #0b0c0b;
+    --accent: #c8420a;
+    --text: #d4d4d4;
+    --text-muted: #888;
+    --surface: #141514;
+    --surface-alt: #1a1b1a;
+    --border: #2a2b2a;
+    --success: #2ea043;
+    --warning: #d29922;
+    --info: #388bfd;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+    background: var(--ink);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  h1, h2, h3 { color: #fff; font-weight: 600; }
+  h1 { font-size: 2rem; margin-bottom: 0.5rem; border-bottom: 3px solid var(--accent); padding-bottom: 0.75rem; }
+  h2 { font-size: 1.4rem; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; }
+
+  .subtitle { color: var(--accent); font-size: 0.95rem; margin-bottom: 2rem; }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .card .metric {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .card .label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+  }
+
+  .exec-summary {
+    background: var(--surface);
+    border-left: 4px solid var(--accent);
+    padding: 1.5rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1.5rem 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+
+  th {
+    background: var(--surface);
+    color: var(--accent);
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border-bottom: 2px solid var(--accent);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tr:hover td { background: var(--surface-alt); }
+
+  .arch-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+
+  .flow-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    min-width: 800px;
+  }
+
+  .flow-row {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .flow-box {
+    background: var(--surface-alt);
+    border: 2px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.75rem 1.25rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: #fff;
+    min-width: 140px;
+  }
+
+  .flow-box.primary {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .flow-box.secondary {
+    border-color: var(--info);
+    background: rgba(56, 139, 253, 0.1);
+  }
+
+  .flow-box.tertiary {
+    border-color: var(--success);
+    background: rgba(46, 160, 67, 0.1);
+  }
+
+  .flow-arrow {
+    color: var(--accent);
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  .checklist {
+    list-style: none;
+    padding: 0;
+  }
+
+  .checklist li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .checklist li::before {
+    content: '';
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--success);
+    border-radius: 3px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin: 0.15rem;
+  }
+
+  .tag-healthcare { background: rgba(56, 139, 253, 0.15); color: var(--info); border: 1px solid var(--info); }
+  .tag-finance { background: rgba(210, 153, 34, 0.15); color: var(--warning); border: 1px solid var(--warning); }
+  .tag-government { background: rgba(200, 66, 10, 0.15); color: var(--accent); border: 1px solid var(--accent); }
+  .tag-retail { background: rgba(46, 160, 67, 0.15); color: var(--success); border: 1px solid var(--success); }
+  .tag-saas { background: rgba(163, 113, 247, 0.15); color: #a371f7; border: 1px solid #a371f7; }
+
+  .industry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+
+  .industry-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+  }
+
+  .industry-card h4 { margin-bottom: 0.5rem; color: #fff; }
+  .industry-card p { font-size: 0.85rem; color: var(--text-muted); }
+
+  code {
+    background: var(--surface);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--accent);
+  }
+
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 1rem 0;
+  }
+
+  .links-section a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  .links-section a:hover { border-bottom-color: var(--accent); }
+
+  footer {
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  .data-flow-step {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 0.75rem 0;
+  }
+
+  .step-num {
+    background: var(--accent);
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .security-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 0.75rem 0;
+  }
+
+  .security-item h4 { color: var(--accent); font-size: 0.95rem; margin-bottom: 0.35rem; }
+  .security-item p { font-size: 0.85rem; color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<h1>terraform-aws-efs</h1>
+<div class="subtitle">Architecture Document &mdash; AWS Elastic File System Module</div>
+
+<!-- Executive Summary -->
+<h2>Executive Summary</h2>
+<div class="exec-summary">
+  <p>Terraform module to provision an AWS Elastic File System (EFS) with mount targets across multiple availability zones, configurable access points with POSIX user and root directory settings, cross-region replication, automatic backup policies, and lifecycle policies for transitioning data to Infrequent Access storage. The module includes a dedicated NFS security group with VPC CIDR-scoped ingress on port 2049, encryption at rest enabled by default with optional customer-managed KMS keys, and supports both generalPurpose and maxIO performance modes.</p>
+</div>
+
+<!-- Overview Cards -->
+<h2>Overview</h2>
+<div class="card-grid">
+  <div class="card">
+    <div class="metric">7</div>
+    <div class="label">Resources</div>
+  </div>
+  <div class="card">
+    <div class="metric">14</div>
+    <div class="label">Variables</div>
+  </div>
+  <div class="card">
+    <div class="metric">10</div>
+    <div class="label">Outputs</div>
+  </div>
+  <div class="card">
+    <div class="metric">3</div>
+    <div class="label">Throughput Modes</div>
+  </div>
+</div>
+
+<!-- Architecture Diagram -->
+<h2>Architecture Diagram</h2>
+<div class="arch-diagram">
+  <div class="flow-container">
+    <div class="flow-row">
+      <div class="flow-box primary">EFS File System<br><small>Performance + Throughput Mode</small></div>
+    </div>
+    <div class="flow-arrow">|</div>
+    <div class="flow-row">
+      <div class="flow-box">Lifecycle Policy<br><small>Transition to IA</small></div>
+      <div class="flow-box">KMS Encryption<br><small>At-rest protection</small></div>
+    </div>
+    <div class="flow-arrow">|</div>
+    <div class="flow-row">
+      <div class="flow-box secondary">Mount Target AZ-a<br><small>Subnet 1</small></div>
+      <div class="flow-box secondary">Mount Target AZ-b<br><small>Subnet 2</small></div>
+      <div class="flow-box secondary">Mount Target AZ-c<br><small>Subnet 3</small></div>
+    </div>
+    <div class="flow-arrow">|</div>
+    <div class="flow-row">
+      <div class="flow-box">Security Group<br><small>NFS Port 2049</small></div>
+    </div>
+    <div class="flow-arrow">|</div>
+    <div class="flow-row">
+      <div class="flow-box tertiary">Access Point 1<br><small>POSIX User / Root Dir</small></div>
+      <div class="flow-box tertiary">Access Point 2<br><small>POSIX User / Root Dir</small></div>
+    </div>
+    <div class="flow-arrow">|</div>
+    <div class="flow-row">
+      <div class="flow-box secondary">AWS Backup<br><small>Automatic backups</small></div>
+      <div class="flow-box secondary">Cross-Region Replication<br><small>DR destination</small></div>
+    </div>
+  </div>
+</div>
+
+<!-- Component Breakdown -->
+<h2>Component Breakdown</h2>
+<table>
+  <thead>
+    <tr><th>Resource</th><th>Type</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>aws_efs_file_system.this</code></td><td>resource</td><td>EFS file system with performance mode, throughput, encryption, lifecycle</td></tr>
+    <tr><td><code>aws_security_group.efs</code></td><td>resource</td><td>Dedicated NFS security group</td></tr>
+    <tr><td><code>aws_security_group_rule.nfs_ingress</code></td><td>resource</td><td>NFS port 2049 ingress from VPC CIDR</td></tr>
+    <tr><td><code>aws_security_group_rule.nfs_egress</code></td><td>resource</td><td>Allow all outbound traffic</td></tr>
+    <tr><td><code>aws_efs_mount_target.this</code></td><td>resource</td><td>Mount targets across multiple subnets/AZs</td></tr>
+    <tr><td><code>aws_efs_access_point.this</code></td><td>resource</td><td>Access points with POSIX user and root directory</td></tr>
+    <tr><td><code>aws_efs_backup_policy.this</code></td><td>resource</td><td>Automatic backup policy (enabled by default)</td></tr>
+    <tr><td><code>aws_efs_replication_configuration.this</code></td><td>resource</td><td>Cross-region replication configuration</td></tr>
+  </tbody>
+</table>
+
+<!-- Data Flow -->
+<h2>Data Flow</h2>
+<div class="data-flow-step"><div class="step-num">1</div><div>EC2 instances, ECS tasks, or Lambda functions connect to EFS via mount targets in their respective availability zones.</div></div>
+<div class="data-flow-step"><div class="step-num">2</div><div>NFS traffic on port 2049 is allowed through the security group scoped to the VPC CIDR block.</div></div>
+<div class="data-flow-step"><div class="step-num">3</div><div>Access points enforce POSIX user identity and root directory isolation for multi-application file sharing.</div></div>
+<div class="data-flow-step"><div class="step-num">4</div><div>Lifecycle policy transitions infrequently accessed files to the IA storage class for cost optimization.</div></div>
+<div class="data-flow-step"><div class="step-num">5</div><div>Data at rest is encrypted using AWS-managed or customer-managed KMS keys.</div></div>
+<div class="data-flow-step"><div class="step-num">6</div><div>AWS Backup creates automatic backups of the file system for point-in-time recovery.</div></div>
+<div class="data-flow-step"><div class="step-num">7</div><div>Cross-region replication continuously replicates file system data to a destination region for disaster recovery.</div></div>
+
+<!-- Security Controls -->
+<h2>Security Controls</h2>
+<div class="security-item">
+  <h4>Encryption at Rest</h4>
+  <p>Enabled by default (<code>encrypted = true</code>) with optional customer-managed KMS key via <code>kms_key_arn</code>.</p>
+</div>
+<div class="security-item">
+  <h4>NFS Security Group</h4>
+  <p>Dedicated security group restricts NFS traffic (port 2049) to the VPC CIDR block only. Additional security groups can be layered.</p>
+</div>
+<div class="security-item">
+  <h4>Access Point Isolation</h4>
+  <p>Access points enforce POSIX user/group identity and root directory boundaries, providing application-level file system isolation.</p>
+</div>
+<div class="security-item">
+  <h4>Automatic Backups</h4>
+  <p>AWS Backup integration enabled by default (<code>enable_backup = true</code>) for continuous data protection.</p>
+</div>
+<div class="security-item">
+  <h4>In-Transit Encryption</h4>
+  <p>EFS supports TLS encryption in transit when mounted with the <code>-o tls</code> option via the EFS mount helper.</p>
+</div>
+
+<!-- Industry Adaptation -->
+<h2>Industry Adaptation</h2>
+<div class="industry-grid">
+  <div class="industry-card">
+    <h4><span class="tag tag-healthcare">Healthcare</span></h4>
+    <p>KMS encryption for PHI at rest. Access points for HIPAA application isolation. Cross-region replication for disaster recovery compliance.</p>
+  </div>
+  <div class="industry-card">
+    <h4><span class="tag tag-finance">Finance</span></h4>
+    <p>Automatic backups for financial data retention requirements. Provisioned throughput for predictable performance on report generation workloads.</p>
+  </div>
+  <div class="industry-card">
+    <h4><span class="tag tag-government">Government</span></h4>
+    <p>CMK encryption for data sovereignty. Security group scoping for network segmentation. Lifecycle policies for records management cost control.</p>
+  </div>
+  <div class="industry-card">
+    <h4><span class="tag tag-retail">Retail</span></h4>
+    <p>Shared file storage for content management systems. Elastic throughput for seasonal traffic. IA lifecycle for infrequently accessed media assets.</p>
+  </div>
+  <div class="industry-card">
+    <h4><span class="tag tag-saas">SaaS</span></h4>
+    <p>Access points for multi-tenant file isolation. generalPurpose mode for latency-sensitive workloads. Cross-AZ mount targets for high availability.</p>
+  </div>
+</div>
+
+<!-- Production Readiness Checklist -->
+<h2>Production Readiness Checklist</h2>
+<ul class="checklist">
+  <li>Enable encryption at rest with a customer-managed KMS key for sensitive data</li>
+  <li>Deploy mount targets in at least two availability zones for high availability</li>
+  <li>Configure lifecycle policies to transition cold data to Infrequent Access storage</li>
+  <li>Enable automatic backups for data protection and compliance</li>
+  <li>Use access points to enforce POSIX user identity for multi-application sharing</li>
+  <li>Restrict security group ingress to specific CIDR blocks or security groups</li>
+  <li>Configure cross-region replication for disaster recovery requirements</li>
+  <li>Choose appropriate performance mode (generalPurpose vs maxIO) based on workload</li>
+  <li>Set provisioned throughput for workloads requiring predictable I/O performance</li>
+  <li>Mount with TLS encryption in transit using the EFS mount helper</li>
+</ul>
+
+<!-- Configuration Reference -->
+<h2>Configuration Reference</h2>
+<table>
+  <thead>
+    <tr><th>Variable</th><th>Type</th><th>Default</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>name</code></td><td>string</td><td>required</td><td>Name of the EFS file system</td></tr>
+    <tr><td><code>vpc_id</code></td><td>string</td><td>required</td><td>VPC ID for the security group</td></tr>
+    <tr><td><code>subnet_ids</code></td><td>list(string)</td><td>required</td><td>Subnet IDs for mount targets</td></tr>
+    <tr><td><code>performance_mode</code></td><td>string</td><td><code>"generalPurpose"</code></td><td>generalPurpose or maxIO</td></tr>
+    <tr><td><code>throughput_mode</code></td><td>string</td><td><code>"bursting"</code></td><td>bursting, provisioned, or elastic</td></tr>
+    <tr><td><code>provisioned_throughput</code></td><td>number</td><td><code>null</code></td><td>Provisioned throughput in MiB/s</td></tr>
+    <tr><td><code>encrypted</code></td><td>bool</td><td><code>true</code></td><td>Enable encryption at rest</td></tr>
+    <tr><td><code>kms_key_arn</code></td><td>string</td><td><code>null</code></td><td>KMS key ARN for encryption</td></tr>
+    <tr><td><code>lifecycle_policy</code></td><td>string</td><td><code>null</code></td><td>Transition to IA storage class</td></tr>
+    <tr><td><code>access_points</code></td><td>map(object)</td><td><code>{}</code></td><td>Map of access point configurations</td></tr>
+    <tr><td><code>security_group_ids</code></td><td>list(string)</td><td><code>[]</code></td><td>Additional security group IDs</td></tr>
+    <tr><td><code>enable_backup</code></td><td>bool</td><td><code>true</code></td><td>Enable automatic backups</td></tr>
+    <tr><td><code>enable_replication</code></td><td>bool</td><td><code>false</code></td><td>Enable cross-region replication</td></tr>
+    <tr><td><code>replication_destination_region</code></td><td>string</td><td><code>null</code></td><td>Destination region for replication</td></tr>
+    <tr><td><code>tags</code></td><td>map(string)</td><td><code>{}</code></td><td>Tags for all resources</td></tr>
+  </tbody>
+</table>
+
+<!-- Deployment -->
+<h2>Deployment</h2>
+<pre>
+# Clone the repository
+git clone https://github.com/kogunlowo123/terraform-aws-efs.git
+cd terraform-aws-efs
+
+# Initialize Terraform
+terraform init
+
+# Review the execution plan
+terraform plan
+
+# Apply the configuration
+terraform apply
+
+# To destroy all resources
+terraform destroy
+</pre>
+
+<!-- Links -->
+<h2>Links</h2>
+<div class="links-section">
+  <p><a href="https://github.com/kogunlowo123/terraform-aws-efs">GitHub Repository</a></p>
+  <p><a href="https://github.com/kogunlowo123/terraform-aws-efs/blob/main/README.md">README.md</a></p>
+  <p><a href="https://docs.aws.amazon.com/efs/">AWS EFS Documentation</a></p>
+</div>
+
+<!-- Footer -->
+<footer>
+  <p>Generated on 2026-03-15 &mdash; terraform-aws-efs Architecture Document</p>
+  <p>Terraform >= 1.0 &bull; AWS Provider >= 5.0</p>
+</footer>
+
+</body>
+</html>
