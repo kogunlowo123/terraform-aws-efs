@@ -19,7 +19,7 @@ resource "aws_efs_file_system" "this" {
     }
   }
 
-  tags = local.common_tags
+  tags = merge(var.tags, { Name = var.name })
 }
 
 ###############################################################################
@@ -31,8 +31,8 @@ resource "aws_security_group" "efs" {
   description = "Security group for EFS mount targets - ${var.name}"
   vpc_id      = var.vpc_id
 
-  tags = merge(local.common_tags, {
-    "Name" = "${var.name}-efs"
+  tags = merge(var.tags, {
+    Name = "${var.name}-efs"
   })
 }
 
@@ -65,7 +65,7 @@ resource "aws_efs_mount_target" "this" {
 
   file_system_id  = aws_efs_file_system.this.id
   subnet_id       = each.value
-  security_groups = local.security_group_ids
+  security_groups = concat([aws_security_group.efs.id], var.security_group_ids)
 }
 
 ###############################################################################
@@ -101,8 +101,8 @@ resource "aws_efs_access_point" "this" {
     }
   }
 
-  tags = merge(local.common_tags, {
-    "Name" = "${var.name}-${each.key}"
+  tags = merge(var.tags, {
+    Name = "${var.name}-${each.key}"
   })
 }
 

@@ -4,7 +4,7 @@ variable "name" {
 }
 
 variable "performance_mode" {
-  description = "The file system performance mode. Can be 'generalPurpose' or 'maxIO'."
+  description = "The file system performance mode (generalPurpose or maxIO)."
   type        = string
   default     = "generalPurpose"
 
@@ -15,7 +15,7 @@ variable "performance_mode" {
 }
 
 variable "throughput_mode" {
-  description = "Throughput mode for the file system. Can be 'bursting', 'provisioned', or 'elastic'."
+  description = "Throughput mode for the file system (bursting, provisioned, or elastic)."
   type        = string
   default     = "bursting"
 
@@ -26,7 +26,7 @@ variable "throughput_mode" {
 }
 
 variable "provisioned_throughput" {
-  description = "The throughput, measured in MiB/s, that you want to provision for the file system. Only applicable when throughput_mode is 'provisioned'."
+  description = "Throughput in MiB/s to provision; only applicable when throughput_mode is provisioned."
   type        = number
   default     = null
 }
@@ -38,13 +38,13 @@ variable "encrypted" {
 }
 
 variable "kms_key_arn" {
-  description = "ARN of the KMS key to use for encryption. If not specified, the AWS-managed key for EFS is used."
+  description = "ARN of the KMS key for encryption; uses AWS-managed key if not specified."
   type        = string
   default     = null
 }
 
 variable "lifecycle_policy" {
-  description = "Lifecycle policy for transitioning files to Infrequent Access (IA) storage. Valid values: AFTER_7_DAYS, AFTER_14_DAYS, AFTER_30_DAYS, AFTER_60_DAYS, AFTER_90_DAYS, AFTER_1_DAY, AFTER_180_DAYS, AFTER_270_DAYS, AFTER_365_DAYS."
+  description = "Lifecycle policy for transitioning files to IA storage (e.g. AFTER_30_DAYS)."
   type        = string
   default     = null
 }
@@ -55,7 +55,7 @@ variable "subnet_ids" {
 }
 
 variable "security_group_ids" {
-  description = "List of additional security group IDs to attach to mount targets. The module-created NFS security group is always included."
+  description = "List of additional security group IDs to attach to mount targets."
   type        = list(string)
   default     = []
 }
@@ -99,7 +99,7 @@ variable "enable_replication" {
 }
 
 variable "replication_destination_region" {
-  description = "AWS region for the EFS replication destination. Required when enable_replication is true."
+  description = "AWS region for the EFS replication destination."
   type        = string
   default     = null
 }
