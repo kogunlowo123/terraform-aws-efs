@@ -9,16 +9,16 @@ data "aws_kms_key" "efs" {
 module "efs" {
   source = "../../"
 
-  name                  = "complete-efs"
-  vpc_id                = "vpc-0123456789abcdef0"
-  subnet_ids            = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1", "subnet-0123456789abcdef2"]
-  security_group_ids    = ["sg-0123456789abcdef0"]
-  performance_mode      = "generalPurpose"
-  throughput_mode       = "provisioned"
+  name                   = "complete-efs"
+  vpc_id                 = "vpc-0123456789abcdef0"
+  subnet_ids             = ["subnet-0123456789abcdef0", "subnet-0123456789abcdef1", "subnet-0123456789abcdef2"]
+  security_group_ids     = ["sg-0123456789abcdef0"]
+  performance_mode       = "generalPurpose"
+  throughput_mode        = "provisioned"
   provisioned_throughput = 256
-  encrypted             = true
-  kms_key_arn           = data.aws_kms_key.efs.arn
-  lifecycle_policy      = "AFTER_14_DAYS"
+  encrypted              = true
+  kms_key_arn            = data.aws_kms_key.efs.arn
+  lifecycle_policy       = "AFTER_14_DAYS"
 
   access_points = {
     app = {
@@ -39,8 +39,8 @@ module "efs" {
     shared = {
       path = "/shared"
       posix_user = {
-        gid = 1002
-        uid = 1002
+        gid            = 1002
+        uid            = 1002
         secondary_gids = [1000, 1001]
       }
       root_directory = {
@@ -54,8 +54,8 @@ module "efs" {
     }
   }
 
-  enable_backup                 = true
-  enable_replication            = true
+  enable_backup                  = true
+  enable_replication             = true
   replication_destination_region = "us-west-2"
 
   tags = {
